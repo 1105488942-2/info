@@ -1,0 +1,45 @@
+name: B站开播通知
+
+on:
+  schedule:
+    # 每 5 分钟跑一次（GitHub Actions 最短间隔 5 分钟）
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # 允许手动点按钮触发
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉代码
+        uses: actions/checkout@v4
+
+      - name: 装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 装依赖
+        run: pip install -r requirements.txt
+
+      # ---- state.json 持久化（存 GitHub Gist）----
+      - name: 下载 state.json
+        run: |
+          curl -sL "https://api.github.com/gists/${{ secrets.GIST_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['files']['state.json']['content'])" \
+            > state.json || echo '{"rooms":{}}' > state.json
+
+      - name: 跑一轮轮询
+        env:
+          QQ_APPID: ${{ secrets.QQ_APPID }}
+          QQ_SECRET: ${{ secrets.QQ_SECRET }}
+          QQ_OFFICIAL_ENABLED: "true"
+        run: python3 main.py --once --no-web
+
+      - name: 上传 state.json
+        if: always()
+        run: |
+          curl -sX PATCH "https://api.github.com/gists/${{ secrets.GIST_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"files\":{\"state.json\":{\"content\":$(python3 -c "import json,sys; print(json.dumps(open('state.json').read()))")}}}"

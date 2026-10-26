@@ -1,0 +1,62 @@
+# ============ B站直播间 ============
+[bilibili]
+# 轮询间隔（秒），建议 30~120，太频繁容易触发风控
+# 具体监听的直播间与目标群在 subscriptions.json 里维护（也可用网页管理）
+poll_interval = 60
+
+# ============ QQ 官方机器人（q.qq.com） ============
+# 推荐：完全合规，不会封号，每月每群 1000 条主动消息
+# 前置条件：
+#   1. 机器人已加入目标群
+#   2. 群主在群设置里打开「机器人主动在群聊内发言」
+#   3. 消息里的 bilibili.com 等 URL 需在 q.qq.com 后台预先配置域名白名单
+[qq_official]
+# 开关：true 用官方机器人，false 回退到下面的 OneBot/NapCat
+enabled = true
+appid = "1906006392"
+secret = "QLHDA75433457ADHMRXelt1AKVgs4HVj"
+
+# ============ QQ 推送（OneBot v11 / NapCat / LLOneBot） ============
+# 当 [qq_official].enabled = false 时使用此段
+[qq]
+# NapCat / LLOneBot 的 HTTP 服务地址
+api_base = "http://127.0.0.1:3000"
+# 如果 OneBot 端配置了 access_token 就填上，没有就留空
+access_token = "06ccd790d8397199aa0817145857d879"
+
+# ============ 通知内容 ============
+[notify]
+# 程序启动时如果主播已经在直播，是否也发一条（false 可避免重启刷屏）
+notify_on_startup = false
+# 是否 @全体成员（需要机器人在群内有 @全体 权限）
+at_all = false
+# 是否附带直播封面图
+include_cover = true
+# 消息模板，可用变量：
+#   {name} 主播昵称   {title} 直播标题   {room_id} 房间号
+#   {url} 直播间链接  {time} 开播时间
+message_template = "{name} 开播啦！\n{title}\n{url}"
+
+# ============ QQ 私聊查询 ============
+[query]
+# 允许私聊机器人查询配置的 QQ 号白名单；留空数组则禁用该功能
+# 白名单内的 QQ 给机器人私聊发送下列指令之一，即可收到当前配置与运行状态
+allowed_qq = [1105488942]
+# 触发指令（私聊内容与任一指令完全一致时回复，不区分大小写）
+commands = ["查询", "状态", "配置", "config", "status"]
+
+# ============ 网页管理 ============
+[webui]
+host = "0.0.0.0"
+port = 9900
+username = "admin"
+# 登录密码，请自行修改；留空则禁用网页
+# 同一 IP 10 分钟内输错 5 次会封禁 30 分钟
+password = "3262c8d61e27f450be"
+
+# ============ 其他 ============
+[storage]
+# 记录上次直播状态的文件，避免重复通知
+state_file = "state.json"
+# 直播间 ↔ QQ群 的订阅关系
+subscriptions_file = "subscriptions.json"

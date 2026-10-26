@@ -1,0 +1,14 @@
+# 本地运行时产生的文件
+state.json
+group_map.json
+__pycache__/
+*.pyc
+.env
+danmurobot/
+deploy/
+swapfile
+*.db
+*.db-shm
+*.db-wal
+token/
+login.jpg

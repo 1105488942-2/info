@@ -1,0 +1,3 @@
+requests>=2.31
+tomllib; sys_platform == "win32"  # Python 3.11+ 内置，仅 Windows 需要
+websockets>=12
