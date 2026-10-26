@@ -4,7 +4,16 @@ on:
   schedule:
     # 每 5 分钟跑一次（GitHub Actions 最短间隔 5 分钟）
     - cron: '*/5 * * * *'
-  workflow_dispatch:  # 允许手动点按钮触发
+  workflow_dispatch:  # 允许手动点按钮触发，可选 test 参数
+    inputs:
+      mode:
+        description: 运行模式
+        required: false
+        default: poll
+        type: choice
+        options:
+          - poll   # 正常轮询
+          - test   # 发测试消息到所有订阅群
 
 permissions:
   contents: read
@@ -26,20 +35,30 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 下载 state.json
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'poll'
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py download
 
-      - name: 跑一轮轮询
+      - name: 跑轮询
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'poll'
         env:
           QQ_APPID: ${{ secrets.QQ_APPID }}
           QQ_SECRET: ${{ secrets.QQ_SECRET }}
           QQ_OFFICIAL_ENABLED: "true"
         run: python3 main.py --once --no-web
 
+      - name: 发测试消息
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'test'
+        env:
+          QQ_APPID: ${{ secrets.QQ_APPID }}
+          QQ_SECRET: ${{ secrets.QQ_SECRET }}
+          QQ_OFFICIAL_ENABLED: "true"
+        run: python3 main.py --test --no-web
+
       - name: 上传 state.json
-        if: always()
+        if: always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'poll')
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
