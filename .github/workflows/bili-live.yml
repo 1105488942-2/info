@@ -1,6 +1,6 @@
 name: B站开播通知
 
-on:
+'on':
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
@@ -17,7 +17,6 @@ permissions:
 jobs:
   poll:
     runs-on: ubuntu-latest
-    # 正常轮询：schedule 触发，或手动选 poll
     if: github.event_name == 'schedule' || github.event.inputs.mode == 'poll' || github.event.inputs.mode == ''
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +49,6 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    # 测试：手动选 test
     if: github.event.inputs.mode == 'test'
     steps:
       - uses: actions/checkout@v4
