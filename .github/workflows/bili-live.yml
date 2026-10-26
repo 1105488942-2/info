@@ -1,9 +1,42 @@
-name: Test
+name: BiliNotify
 
-on: [push]
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  gist: write
 
 jobs:
-  hello:
+  main:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "hello world"
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install -r requirements.txt
+
+      - name: Download state
+        env:
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GH: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 gist_helper.py download
+
+      - name: Run notify
+        env:
+          QQ_APPID: ${{ secrets.QQ_APPID }}
+          QQ_SECRET: ${{ secrets.QQ_SECRET }}
+          QQ_OFFICIAL_ENABLED: 'true'
+        run: python3 main.py --once --no-web
+
+      - name: Upload state
+        if: always()
+        env:
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GH: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 gist_helper.py upload
