@@ -25,18 +25,11 @@ jobs:
       - name: 装依赖
         run: pip install -r requirements.txt
 
-      # ---- state.json 持久化（存 GitHub Gist）----
       - name: 下载 state.json
-        run: |
-          curl -sL "https://api.github.com/gists/${{ secrets.GIST_ID }}" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-content = d.get('files', {}).get('state.json', {}).get('content', '')
-open('state.json', 'w').write(content or '{}')
-"
+        env:
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 gist_helper.py download
 
       - name: 跑一轮轮询
         env:
@@ -47,25 +40,7 @@ open('state.json', 'w').write(content or '{}')
 
       - name: 上传 state.json
         if: always()
-        run: |
-          python3 -c "
-import json, urllib.request, os
-gist_id = os.environ['GIST_ID']
-token = os.environ['GITHUB_TOKEN']
-content = open('state.json').read()
-body = json.dumps({'files': {'state.json': {'content': content}}}).encode()
-req = urllib.request.Request(
-    f'https://api.github.com/gists/{gist_id}',
-    data=body, method='PATCH',
-    headers={
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json',
-        'Accept': 'application/vnd.github+json',
-    }
-)
-urllib.request.urlopen(req)
-print('state.json 已保存到 Gist')
-"
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 gist_helper.py upload
