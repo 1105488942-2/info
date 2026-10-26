@@ -6,62 +6,46 @@ name: B站开播通知
   workflow_dispatch:
     inputs:
       mode:
-        description: 运行模式 (poll=轮询, test=发测试消息)
+        description: 'poll 或 test'
         required: false
-        default: poll
+        default: 'poll'
 
 permissions:
   contents: read
   gist: write
 
 jobs:
-  poll:
+  run:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event.inputs.mode == 'poll' || github.event.inputs.mode == ''
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - run: pip install -r requirements.txt
-
       - name: 下载 state.json
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py download
-
-      - name: 跑轮询
+      - name: 下载 state.json 完成
+        run: echo "done"
+      - name: 跑轮询或测试
         env:
           QQ_APPID: ${{ secrets.QQ_APPID }}
           QQ_SECRET: ${{ secrets.QQ_SECRET }}
-          QQ_OFFICIAL_ENABLED: "true"
-        run: python3 main.py --once --no-web
-
+          QQ_OFFICIAL_ENABLED: 'true'
+          MODE: ${{ github.event.inputs.mode }}
+        run: |
+          python3 -c "import os; print('MODE=' + os.environ.get('MODE',''))"
+          if [ "$MODE" = "test" ]; then
+            python3 main.py --test --test-group 668286732 --no-web
+          else
+            python3 main.py --once --no-web
+          fi
       - name: 上传 state.json
         if: always()
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py upload
-
-  test:
-    runs-on: ubuntu-latest
-    if: github.event.inputs.mode == 'test'
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - run: pip install -r requirements.txt
-
-      - name: 发测试消息（仅测试群 668286732）
-        env:
-          QQ_APPID: ${{ secrets.QQ_APPID }}
-          QQ_SECRET: ${{ secrets.QQ_SECRET }}
-          QQ_OFFICIAL_ENABLED: "true"
-        run: python3 main.py --test --test-group 668286732 --no-web
