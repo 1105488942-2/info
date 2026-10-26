@@ -20,6 +20,7 @@ jobs:
       - name: Download state
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py download
 
@@ -34,5 +35,6 @@ jobs:
         if: always()
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py upload
