@@ -61,9 +61,9 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: 发测试消息
+      - name: 发测试消息（仅测试群 668286732）
         env:
           QQ_APPID: ${{ secrets.QQ_APPID }}
           QQ_SECRET: ${{ secrets.QQ_SECRET }}
           QQ_OFFICIAL_ENABLED: "true"
-        run: python3 main.py --test --no-web
+        run: python3 main.py --test --test-group 668286732 --no-web

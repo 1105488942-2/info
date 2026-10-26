@@ -1605,7 +1605,8 @@ def poll_cycle(
 def run() -> int:
     parser = argparse.ArgumentParser(description="B站开播 → QQ群通知")
     parser.add_argument("-c", "--config", default=str(BASE_DIR / "config.toml"), help="配置文件路径")
-    parser.add_argument("--test", action="store_true", help="向所有订阅群发送测试消息后退出")
+    parser.add_argument("--test", action="store_true", help="向订阅群发送测试消息后退出")
+    parser.add_argument("--test-group", type=int, default=0, help="测试消息只发往指定群号（默认所有订阅群）")
     parser.add_argument("--once", action="store_true", help="只跑一轮轮询就退出（用于 GitHub Actions / cron）")
     parser.add_argument("--no-web", action="store_true", help="不启动管理页面")
     args = parser.parse_args()
@@ -1655,6 +1656,11 @@ def run() -> int:
 
     if args.test:
         groups = sorted({s["group_id"] for s in subs})
+        if args.test_group:
+            groups = [g for g in groups if g == args.test_group]
+            if not groups:
+                log.error("群号 %s 不在订阅列表中", args.test_group)
+                return 1
         if not groups:
             log.error("没有订阅，无法确定测试消息发往哪个群")
             return 1
