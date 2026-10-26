@@ -6,6 +6,10 @@ on:
     - cron: '*/5 * * * *'
   workflow_dispatch:  # 允许手动点按钮触发
 
+permissions:
+  contents: read
+  gist: write  # 必须显式申请 gist 权限才能读写 state.json
+
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -26,8 +30,13 @@ jobs:
         run: |
           curl -sL "https://api.github.com/gists/${{ secrets.GIST_ID }}" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['files']['state.json']['content'])" \
-            > state.json || echo '{"rooms":{}}' > state.json
+            -H "Accept: application/vnd.github+json" \
+            | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+content = d.get('files', {}).get('state.json', {}).get('content', '')
+open('state.json', 'w').write(content or '{}')
+"
 
       - name: 跑一轮轮询
         env:
@@ -39,7 +48,24 @@ jobs:
       - name: 上传 state.json
         if: always()
         run: |
-          curl -sX PATCH "https://api.github.com/gists/${{ secrets.GIST_ID }}" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"files\":{\"state.json\":{\"content\":$(python3 -c "import json,sys; print(json.dumps(open('state.json').read()))")}}}"
+          python3 -c "
+import json, urllib.request, os
+gist_id = os.environ['GIST_ID']
+token = os.environ['GITHUB_TOKEN']
+content = open('state.json').read()
+body = json.dumps({'files': {'state.json': {'content': content}}}).encode()
+req = urllib.request.Request(
+    f'https://api.github.com/gists/{gist_id}',
+    data=body, method='PATCH',
+    headers={
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json',
+    }
+)
+urllib.request.urlopen(req)
+print('state.json 已保存到 Gist')
+"
+        env:
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
