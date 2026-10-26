@@ -2,64 +2,68 @@ name: B站开播通知
 
 on:
   schedule:
-    # 每 5 分钟跑一次（GitHub Actions 最短间隔 5 分钟）
     - cron: '*/5 * * * *'
-  workflow_dispatch:  # 允许手动点按钮触发，可选 test 参数
+  workflow_dispatch:
     inputs:
       mode:
-        description: 运行模式
+        description: 运行模式 (poll=轮询, test=发测试消息)
         required: false
         default: poll
-        type: choice
-        options:
-          - poll   # 正常轮询
-          - test   # 发测试消息到所有订阅群
 
 permissions:
   contents: read
-  gist: write  # 必须显式申请 gist 权限才能读写 state.json
+  gist: write
 
 jobs:
-  notify:
+  poll:
     runs-on: ubuntu-latest
+    # 正常轮询：schedule 触发，或手动选 poll
+    if: github.event_name == 'schedule' || github.event.inputs.mode == 'poll' || github.event.inputs.mode == ''
     steps:
-      - name: 拉代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 装 Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: 装依赖
-        run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt
 
       - name: 下载 state.json
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'poll'
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py download
 
       - name: 跑轮询
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'poll'
         env:
           QQ_APPID: ${{ secrets.QQ_APPID }}
           QQ_SECRET: ${{ secrets.QQ_SECRET }}
           QQ_OFFICIAL_ENABLED: "true"
         run: python3 main.py --once --no-web
 
+      - name: 上传 state.json
+        if: always()
+        env:
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 gist_helper.py upload
+
+  test:
+    runs-on: ubuntu-latest
+    # 测试：手动选 test
+    if: github.event.inputs.mode == 'test'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install -r requirements.txt
+
       - name: 发测试消息
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'test'
         env:
           QQ_APPID: ${{ secrets.QQ_APPID }}
           QQ_SECRET: ${{ secrets.QQ_SECRET }}
           QQ_OFFICIAL_ENABLED: "true"
         run: python3 main.py --test --no-web
-
-      - name: 上传 state.json
-        if: always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'poll')
-        env:
-          GIST_ID: ${{ secrets.GIST_ID }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 gist_helper.py upload
