@@ -1,21 +1,16 @@
-name: B站开播通知
+name: BiliNotify
 
-'on':
+on:
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'poll 或 test'
-        required: false
-        default: 'poll'
 
 permissions:
   contents: read
   gist: write
 
 jobs:
-  run:
+  main:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,29 +18,20 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - name: 下载 state.json
+      - name: Download state
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py download
-      - name: 下载 state.json 完成
-        run: echo "done"
-      - name: 跑轮询或测试
+      - name: Run notify
         env:
           QQ_APPID: ${{ secrets.QQ_APPID }}
           QQ_SECRET: ${{ secrets.QQ_SECRET }}
           QQ_OFFICIAL_ENABLED: 'true'
-          MODE: ${{ github.event.inputs.mode }}
-        run: |
-          python3 -c "import os; print('MODE=' + os.environ.get('MODE',''))"
-          if [ "$MODE" = "test" ]; then
-            python3 main.py --test --test-group 668286732 --no-web
-          else
-            python3 main.py --once --no-web
-          fi
-      - name: 上传 state.json
+        run: python3 main.py --once --no-web
+      - name: Upload state
         if: always()
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH: ${{ secrets.GITHUB_TOKEN }}
         run: python3 gist_helper.py upload
